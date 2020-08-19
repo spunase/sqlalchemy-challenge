@@ -80,7 +80,6 @@ def stations():
     ###create query for stations api
     stations_data = session.query(Station.id,Station.station,Station.name, Station.latitude, Station.longitude,Station.elevation).all()
     session.close()
-    print("Server received request for 'Stations' page...")
     return jsonify(stations_data)
 
 @app.route("/api/v1.0/tobs")
@@ -96,7 +95,7 @@ def tobs():
 
     active_tobs = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= last_year_date).filter(Measurement.station == active_station[0][0]).all()
     session.close()                   
-    print("Server received request for 'Temperature Observations (tobs)' page...")
+    
     return jsonify(active_tobs)
 
 # Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start date
@@ -105,14 +104,13 @@ def calc_temps_start(start):
     # Create our session (link) from Python to the DB
     session = Session(engine)
     start_date = dt.datetime.strptime(start, "%Y-%m-%d").date()
-    result = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-        filter(Measurement.date >= start_date).all()
+    result = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).filter(Measurement.date >= start_date).all()
     session.close() 
     start_date_temp = list(np.ravel(result))  
     return jsonify(start_date_temp)
 
 # Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start-end range.
-@app.route('/api/v1.0/<start_date>/<end_date>/')
+@app.route("/api/v1.0/<start>/<end>")
 def calc_temps_start_end(start, end):
     # Create our session (link) from Python to the DB
     session = Session(engine)
