@@ -105,10 +105,10 @@ def calc_temps_start(start):
     # Create our session (link) from Python to the DB
     session = Session(engine)
     start_date = dt.datetime.strptime(start, "%Y-%m-%d").date()
-    start_date_temp = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+    result = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
         filter(Measurement.date >= start_date).all()
     session.close() 
-    print(f"Calculated temp for {start_date}")   
+    start_date_temp = list(np.ravel(result))  
     return jsonify(start_date_temp)
 
 # Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start-end range.
@@ -118,11 +118,11 @@ def calc_temps_start_end(start, end):
     session = Session(engine)
     start_date = dt.datetime.strptime(start, "%Y-%m-%d").date()
     end_date = dt.datetime.strptime(end, "%Y-%m-%d").date()
-    start_date_temp = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+    result = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
         filter(Measurement.date >= start_date).filter(Measurement.date <= end_date).all()
     session.close()
-    print(f"Calculated temp for start date {start_date} & end date {end_date}")
-    return jsonify(start_date_temp)
+    start_end_range_temp = list(np.ravel(result))
+    return jsonify(start_end_range_temp)
 if __name__ == '__main__':
     app.run(debug=True)
 
