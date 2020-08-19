@@ -60,14 +60,14 @@ def precipitation():
     result = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date >= last_year_date).order_by(Measurement.date).all()
     session.close()
     # create a dictionary from result
-    pricipitation_data = []
+    precipitation_data = []
     for date, prcp in result:
         precipitation_dict = {}
         precipitation_dict["date"] = date
         precipitation_dict["prcp"] = prcp
-        pricipitation_data.append(pricipitation_dict)
+        precipitation_data.append(precipitation_dict)
 
-    return jsonify(pricipitation_data)
+    return jsonify(precipitation_data)
 
 
 
@@ -101,22 +101,23 @@ def tobs():
 
 # Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start date
 @app.route("/api/v1.0/<start>")
-def calc_temps_start(start_date):
+def calc_temps_start(start):
     # Create our session (link) from Python to the DB
     session = Session(engine)
-    start_date = dt.datetime.strptime(start_date, "%Y-%m-%d").date()
+    start_date = dt.datetime.strptime(start, "%Y-%m-%d").date()
     start_date_temp = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
         filter(Measurement.date >= start_date).all()
-    session.close()    
+    session.close() 
+    print(f"Calculated temp for {start_date}")   
     return jsonify(start_date_temp)
 
 # Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start-end range.
 @app.route('/api/v1.0/<start_date>/<end_date>/')
-def calc_temps_start_end(start_date, end_date):
+def calc_temps_start_end(start, end):
     # Create our session (link) from Python to the DB
     session = Session(engine)
-    start_date = dt.datetime.strptime(start_date, "%Y-%m-%d").date()
-    end_date = dt.datetime.strptime(end_date, "%Y-%m-%d").date()
+    start_date = dt.datetime.strptime(start, "%Y-%m-%d").date()
+    end_date = dt.datetime.strptime(end, "%Y-%m-%d").date()
     start_date_temp = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
         filter(Measurement.date >= start_date).filter(Measurement.date <= end_date).all()
     session.close()
