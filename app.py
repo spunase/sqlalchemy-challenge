@@ -23,36 +23,8 @@ Measurement = Base.classes.measurement
 Station = Base.classes.station
 
 
-# Create our session (link) from Python to the DB
-session = Session(engine)
+
     
-# Calculate the date 1 year ago from the last data point in the database
-last_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
-last_year_date = dt.date(2017, 8, 23) - dt.timedelta(days = 365) 
-#create query for /api/v1.0/precipitation   
-# Perform a query to retrieve the date and precipitation scores
-precipitation_data = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date >= last_year_date).all()
-
-# Save the query results as a Pandas DataFrame and set the index to the date column
-
-climate_df = pd.DataFrame(precipitation_data)
-climate_df = climate_df.set_index('date')
-# Sort the dataframe by date
-climate_df = climate_df.sort_values(by='date')
-##Convert the DataFrame to a dictionary
-dict_df = climate_df.to_dict()["prcp"]
-
-
-###create query for stations api
-stations_data = session.query(Station.id,Station.station,Station.name, Station.latitude, Station.longitude,Station.elevation).all()
-#3active station
-active_station = session.query(Measurement.station, 
-                    func.count(Measurement.tobs).label('count')
-                    ).group_by(Measurement.station).order_by(desc('count')).all()
-#Design a query to retrieve the last 12 months of temperature observation data (tobs) for the most active station
-# Query the last 12 months of temperature observation data for this station and plot the results as a histogram
-# Query the last 12 months of temperature observation data for this station and plot the results as a histogram
-active_tobs = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= last_year_date).filter(Measurement.station == active_station[0][0]).all()                   
 #################################################
 # Flask Setup
 #################################################
@@ -76,21 +48,80 @@ def welcome():
     )
 
 
-session.close()
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-    print("Server received request for 'Precipitation' page...")
-    return jsonify(dict_df)
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    # Calculate the date 1 year ago from the last data point in the database
+    last_year_date = dt.date(2017, 8, 23) - dt.timedelta(days = 365) 
+    #create query for /api/v1.0/precipitation   
+    # Perform a query to retrieve the date and precipitation scores
 
+    result = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date >= last_year_date).order_by(Measurement.date).all()
+    session.close()
+    # create a dictionary from result
+    pricipitation_data = []
+    for date, prcp in result:
+        precipitation_dict = {}
+        precipitation_dict["date"] = date
+        precipitation_dict["prcp"] = prcp
+        pricipitation_data.append(pricipitation_dict)
+
+    return jsonify(pricipitation_data)
+
+
+
+    
 @app.route("/api/v1.0/stations")
 def stations():
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    
+    ###create query for stations api
+    stations_data = session.query(Station.id,Station.station,Station.name, Station.latitude, Station.longitude,Station.elevation).all()
+    session.close()
     print("Server received request for 'Stations' page...")
     return jsonify(stations_data)
 
 @app.route("/api/v1.0/tobs")
 def tobs():
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    # Calculate the date 1 year ago from the last data point in the database
+    last_year_date = dt.date(2017, 8, 23) - dt.timedelta(days = 365)
+    active_station = session.query(Measurement.station, 
+                    func.count(Measurement.tobs).label('count')
+                    ).group_by(Measurement.station).order_by(desc('count')).all()
+    #Design a query to retrieve the last 12 months of temperature observation data (tobs) for the most active station
+
+    active_tobs = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= last_year_date).filter(Measurement.station == active_station[0][0]).all()
+    session.close()                   
     print("Server received request for 'Temperature Observations (tobs)' page...")
     return jsonify(active_tobs)
+
+# Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start date
+@app.route("/api/v1.0/<start>")
+def calc_temps_start(start_date):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    start_date = dt.datetime.strptime(start_date, "%Y-%m-%d").date()
+    start_date_temp = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start_date).all()
+    session.close()    
+    return jsonify(start_date_temp)
+
+# Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start-end range.
+@app.route('/api/v1.0/<start_date>/<end_date>/')
+def calc_temps_start_end(start_date, end_date):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    start_date = dt.datetime.strptime(start_date, "%Y-%m-%d").date()
+    end_date = dt.datetime.strptime(end_date, "%Y-%m-%d").date()
+    start_date_temp = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start_date).filter(Measurement.date <= end_date).all()
+    session.close()
+    print(f"Calculated temp for start date {start_date} & end date {end_date}")
+    return jsonify(start_date_temp)
 if __name__ == '__main__':
     app.run(debug=True)
 
